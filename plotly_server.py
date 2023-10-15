@@ -53,7 +53,7 @@ server = app.server
 start_year = data_sorted['날짜'].min().year
 end_year = data_sorted['날짜'].max().year
 year_options = [{'label': str(year), 'value': str(year)} for year in range(start_year, end_year + 1)]
-date_options = ['1개월', '3개월', '6개월', '1년', '3년', '5년', '전체보기']
+date_options = ['1개월', '3개월', '6개월', '1년', '3년', '5년']
 
 combined_options = year_options + [{'label': option, 'value': option} for option in date_options]
 bid_method_options = [{'label': method, 'value': method} for method in data_sorted['낙찰방식'].unique()]
