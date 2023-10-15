@@ -104,7 +104,6 @@ python-dateutil==2.8.2
 python-dotenv==1.0.0
 pytweening==1.0.7
 pytz==2023.3.post1
-pywin32==306
 PyYAML==6.0.1
 pyzmq==25.1.1
 requests==2.31.0
