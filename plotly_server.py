@@ -12,7 +12,10 @@ from config import MONGO_URI
 # MongoDB 연결
 
 print('mongodb connect...')
-client = MongoClient("mongodb+srv://mafumafu9854:3eWoSwhmDvhlim9L@cluster0.nxdfqvk.mongodb.net/?retryWrites=true&w=majority", server_api=ServerApi('1'), ssl=True)
+
+# SSL 옵션을 명시하지 않고 MongoDB에 연결
+client = MongoClient("mongodb+srv://mafumafu9854:3eWoSwhmDvhlim9L@cluster0.nxdfqvk.mongodb.net/?retryWrites=true&w=majority")
+
 
 try:
     client.admin.command('ping')
