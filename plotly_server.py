@@ -13,7 +13,7 @@ import os
 # MongoDB 연결
 print('Trying to connect to MongoDB...')
 try:
-    client = MongoClient("mongodb+srv://mafumafu9854:3eWoSwhmDvhlim9L@cluster0.nxdfqvk.mongodb.net/?retryWrites=true&w=majority")
+    client = MongoClient("m1ongodb+srv://mafumafu9854:3eWoSwhmDvhlim9L@cluster0.nxdfqvk.mongodb.net/?retryWrites=true&w=majority")
     client.admin.command('ping')
     print("Successfully connected to MongoDB!")
     db = client['eat_croll']
@@ -31,14 +31,16 @@ except Exception as e:
     # MongoDB 연결 실패 시 로컬 CSV 파일 사용
     if os.path.exists('eat_croll_data.csv'):
         data = pd.read_csv('eat_croll_data.csv')
+        data['날짜'] = pd.to_datetime(data['날짜'])
+        data_sorted = data.sort_values(by='날짜')
+        data_sorted['낙찰률'] = data_sorted['낙찰예정가격'] * data_sorted['낙찰방식'] / (data_sorted['기초가격'] + 0.0001)
+        data_sorted = data_sorted[data_sorted['낙찰률'] < 1000]
+        data_sorted = data_sorted[data_sorted['날짜'] >= '2000-01-01']
+        data_sorted['발주처_id'] = data_sorted['발주처'].astype('category').cat.codes
     else:
         print("eat_croll_data.csv not found!")
+        
 
-data_sorted = data.sort_values(by='날짜')
-data_sorted['낙찰률'] = data_sorted['낙찰예정가격'] * data_sorted['낙찰방식'] / (data_sorted['기초가격'] + 0.0001)
-data_sorted = data_sorted[data_sorted['낙찰률'] < 1000]
-data_sorted = data_sorted[data_sorted['날짜'] >= '2000-01-01']
-data_sorted['발주처_id'] = data_sorted['발주처'].astype('category').cat.codes
 
 
 app = dash.Dash(__name__)
