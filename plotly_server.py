@@ -13,7 +13,7 @@ import os
 # MongoDB 연결
 print('Trying to connect to MongoDB...')
 try:
-    client = MongoClient("m1ongodb+srv://mafumafu9854:3eWoSwhmDvhlim9L@cluster0.nxdfqvk.mongodb.net/?retryWrites=true&w=majority")
+    client = MongoClient("mongodb+srv://mafumafu9854:3eWoSwhmDvhlim9L@cluster0.nxdfqvk.mongodb.net/?retryWrites=true&w=majority")
     client.admin.command('ping')
     print("Successfully connected to MongoDB!")
     db = client['eat_croll']
