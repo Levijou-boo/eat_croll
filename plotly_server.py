@@ -11,7 +11,7 @@ from config import MONGO_URI
 
 # MongoDB 연결
 
-client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
+client = MongoClient("mongodb+srv://mafumafu9854:3eWoSwhmDvhlim9L@cluster0.nxdfqvk.mongodb.net/?retryWrites=true&w=majority", server_api=ServerApi('1'))
 
 try:
     client.admin.command('ping')
