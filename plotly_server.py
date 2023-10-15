@@ -7,9 +7,11 @@ import pandas as pd
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from datetime import datetime, timedelta
+from config import MONGO_URI
+
 # MongoDB 연결
-uri = "mongodb+srv://mafumafu9854:3eWoSwhmDvhlim9L@cluster0.nxdfqvk.mongodb.net/?retryWrites=true&w=majority"
-client = MongoClient(uri, server_api=ServerApi('1'))
+
+client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
 
 try:
     client.admin.command('ping')
@@ -42,12 +44,12 @@ year_options = [{'label': str(year), 'value': str(year)} for year in range(start
 date_options = ['1개월', '3개월', '6개월', '1년', '3년', '5년', '전체보기']
 
 combined_options = year_options + [{'label': option, 'value': option} for option in date_options]
-
+bid_method_options = [{'label': method, 'value': method} for method in data_sorted['낙찰방식'].unique()]
 app.layout = html.Div([
     html.H1("시간에 따른 낙찰률"),
     dcc.Dropdown(
         id='date-dropdown',
-        options=combined_options,  # 연도 및 기간 선택 옵션을 동시에 포함
+        options=combined_options,
         value='1년'
     ),
     dcc.Dropdown(
@@ -56,15 +58,23 @@ app.layout = html.Div([
         multi=True,
         placeholder="발주처 검색 및 선택"
     ),
-    dcc.Graph(id='rate-graph')  # 이 부분을 추가해야 합니다.
+    dcc.Dropdown(  # 새로 추가된 부분
+        id='bid-method-dropdown',
+        options=bid_method_options,
+        multi=True,
+        placeholder="낙찰 방식 선택"
+    ),
+    dcc.Graph(id='rate-graph')
 ])
 @app.callback(
     Output('rate-graph', 'figure'),
     Input('date-dropdown', 'value'),
-    Input('contractor-dropdown', 'value')
+    Input('contractor-dropdown', 'value'),
+    Input('bid-method-dropdown', 'value')  # 새로 추가된 부분
 )
-def update_graph(selected_date, selected_contractors):
+def update_graph(selected_date, selected_contractors, selected_methods):
     filtered_data = data_sorted
+    
     # 년도 선택 시
     if selected_date.isdigit():
         start_date = datetime(int(selected_date), 1, 1)
@@ -87,16 +97,21 @@ def update_graph(selected_date, selected_contractors):
             cutoff_date = datetime.now() - timedelta(days=5*365)
         else:
             cutoff_date = datetime.min  # 전체 데이터 선택
-
-
+    
+    # 선택된 날짜에 따른 필터링
+    if cutoff_date != datetime.min:
+        filtered_data = filtered_data[filtered_data['날짜'] >= cutoff_date]
+    
+    # 낙찰 방식에 따른 필터링
+    if selected_methods:
+        filtered_data = filtered_data[filtered_data['낙찰방식'].isin(selected_methods)]
+    
     figure = create_rate_graph_hi(filtered_data, selected_contractors, cutoff_date)
     
     # y축의 스케일을 자동으로 조정
     figure['layout']['yaxis'].update(autorange=True)
-
+    
     return figure
-
-
 import plotly.graph_objs as go
 
 def create_rate_graph_hi(data, selected_contractors, cutoff_date):
