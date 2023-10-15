@@ -132,7 +132,6 @@ typing_extensions==4.8.0
 tzdata==2023.3
 urllib3==2.0.4
 wcwidth==0.2.6
-webdriver-manager==4.0.0
 Werkzeug<2.3.0
 wrapt==1.14.1
 wsproto==1.2.0
