@@ -49,21 +49,21 @@ try:
     unknown_values = data_sorted[data_sorted['시/군/구'] == "Unknown"]['지역']
     print(unknown_values.head())
 except Exception as e:
-    # print(f"MongoDB connection failed: {e}")
-    # print("Using eat_croll_data.csv instead...")
-    # # MongoDB 연결 실패 시 로컬 CSV 파일 사용
-    # if os.path.exists('eat_croll_data.csv'):
-    #     data = pd.read_csv('eat_croll_data.csv')
-    #     data['날짜'] = pd.to_datetime(data['날짜'])
-    #     data_sorted = data.sort_values(by='날짜')
-    #     data_sorted['낙찰률'] = data_sorted['낙찰예정가격'] * data_sorted['낙찰방식'] / (data_sorted['기초가격'] + 0.0001)
-    #     data_sorted = data_sorted[data_sorted['낙찰률'] < 1000]
-    #     data_sorted = data_sorted[data_sorted['날짜'] >= '2000-01-01']
-    #     data_sorted['발주처_id'] = data_sorted['발주처'].astype('category').cat.codes
-    #     data_sorted['시/군/구'] = data_sorted['지역'].apply(extract_city)
-    pass
-    # else:
-    #     print("eat_croll_data.csv not found!")
+    print(f"MongoDB connection failed: {e}")
+    print("Using eat_croll_data.csv instead...")
+    # MongoDB 연결 실패 시 로컬 CSV 파일 사용
+    if os.path.exists('eat_croll_data.csv'):
+        data = pd.read_csv('eat_croll_data.csv')
+        data['날짜'] = pd.to_datetime(data['날짜'])
+        data_sorted = data.sort_values(by='날짜')
+        data_sorted['낙찰률'] = data_sorted['낙찰예정가격'] * data_sorted['낙찰방식'] / (data_sorted['기초가격'] + 0.0001)
+        data_sorted = data_sorted[data_sorted['낙찰률'] < 1000]
+        data_sorted = data_sorted[data_sorted['날짜'] >= '2000-01-01']
+        data_sorted['발주처_id'] = data_sorted['발주처'].astype('category').cat.codes
+        data_sorted['시/군/구'] = data_sorted['지역'].apply(extract_city)
+
+    else:
+        print("eat_croll_data.csv not found!")
         
 
 
