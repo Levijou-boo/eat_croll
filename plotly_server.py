@@ -9,7 +9,24 @@ from pymongo.server_api import ServerApi
 from datetime import datetime, timedelta
 from config import MONGO_URI
 import os
+import ast
+import json
 
+
+def extract_city(location_str):
+    try:
+        # Check if location_str is already a dictionary, if so return the desired value
+        if isinstance(location_str, dict):
+            return location_str.get('시/군/구', "Unknown")
+        
+        # Otherwise, try converting string representation of dictionary to actual dictionary using json.loads
+        location_dict = json.loads(location_str.replace("'", '"'))  # Convert single quotes to double quotes for JSON
+        
+        # Extract city if present, otherwise return "Unknown"
+        return location_dict.get('시/군/구', "Unknown")
+    except Exception as e:
+        
+        return "Unknown"
 # MongoDB 연결
 print('Trying to connect to MongoDB...')
 try:
@@ -25,20 +42,28 @@ try:
     data_sorted = data_sorted[data_sorted['낙찰률'] < 1000]
     data_sorted = data_sorted[data_sorted['날짜'] >= '2000-01-01']
     data_sorted['발주처_id'] = data_sorted['발주처'].astype('category').cat.codes
+    data_sorted['시/군/구'] = data_sorted['지역'].apply(extract_city)
+    print(data_sorted['시/군/구'].unique())
+    # '지역' 컬럼에서 '시/군/구' 값을 추출하여 '시/군/구' 컬럼을 생성
+    # '시/군/구' 값이 "Unknown"인 행의 '지역' 컬럼 값을 출력
+    unknown_values = data_sorted[data_sorted['시/군/구'] == "Unknown"]['지역']
+    print(unknown_values.head())
 except Exception as e:
-    print(f"MongoDB connection failed: {e}")
-    print("Using eat_croll_data.csv instead...")
-    # MongoDB 연결 실패 시 로컬 CSV 파일 사용
-    if os.path.exists('eat_croll_data.csv'):
-        data = pd.read_csv('eat_croll_data.csv')
-        data['날짜'] = pd.to_datetime(data['날짜'])
-        data_sorted = data.sort_values(by='날짜')
-        data_sorted['낙찰률'] = data_sorted['낙찰예정가격'] * data_sorted['낙찰방식'] / (data_sorted['기초가격'] + 0.0001)
-        data_sorted = data_sorted[data_sorted['낙찰률'] < 1000]
-        data_sorted = data_sorted[data_sorted['날짜'] >= '2000-01-01']
-        data_sorted['발주처_id'] = data_sorted['발주처'].astype('category').cat.codes
-    else:
-        print("eat_croll_data.csv not found!")
+    # print(f"MongoDB connection failed: {e}")
+    # print("Using eat_croll_data.csv instead...")
+    # # MongoDB 연결 실패 시 로컬 CSV 파일 사용
+    # if os.path.exists('eat_croll_data.csv'):
+    #     data = pd.read_csv('eat_croll_data.csv')
+    #     data['날짜'] = pd.to_datetime(data['날짜'])
+    #     data_sorted = data.sort_values(by='날짜')
+    #     data_sorted['낙찰률'] = data_sorted['낙찰예정가격'] * data_sorted['낙찰방식'] / (data_sorted['기초가격'] + 0.0001)
+    #     data_sorted = data_sorted[data_sorted['낙찰률'] < 1000]
+    #     data_sorted = data_sorted[data_sorted['날짜'] >= '2000-01-01']
+    #     data_sorted['발주처_id'] = data_sorted['발주처'].astype('category').cat.codes
+    #     data_sorted['시/군/구'] = data_sorted['지역'].apply(extract_city)
+    pass
+    # else:
+    #     print("eat_croll_data.csv not found!")
         
 
 
@@ -57,6 +82,8 @@ date_options = ['1개월', '3개월', '6개월', '1년', '3년', '5년']
 
 combined_options = year_options + [{'label': option, 'value': option} for option in date_options]
 bid_method_options = [{'label': method, 'value': method} for method in data_sorted['낙찰방식'].unique()]
+
+
 app.layout = html.Div([
     html.H1("시간에 따른 낙찰률"),
     dcc.Dropdown(
@@ -76,15 +103,24 @@ app.layout = html.Div([
         multi=True,
         placeholder="낙찰 방식 선택"
     ),
+    dcc.Dropdown(  # '시/군/구' 필터를 위한 드롭다운 추가
+        id='region-dropdown',
+        options=[{'label': region, 'value': region} for region in data_sorted['시/군/구'].unique()],
+        multi=True,
+        placeholder="시/군/구 검색 및 선택",
+        value=['김해시','거제시','통영시']
+    ),
     dcc.Graph(id='rate-graph')
 ])
+
 @app.callback(
     Output('rate-graph', 'figure'),
     Input('date-dropdown', 'value'),
     Input('contractor-dropdown', 'value'),
-    Input('bid-method-dropdown', 'value')  # 새로 추가된 부분
+    Input('bid-method-dropdown', 'value'),  
+    Input('region-dropdown', 'value')  
 )
-def update_graph(selected_date, selected_contractors, selected_methods):
+def update_graph(selected_date, selected_contractors, selected_methods, selected_regions):
     filtered_data = data_sorted
     
     # 년도 선택 시
@@ -117,6 +153,9 @@ def update_graph(selected_date, selected_contractors, selected_methods):
     # 낙찰 방식에 따른 필터링
     if selected_methods:
         filtered_data = filtered_data[filtered_data['낙찰방식'].isin(selected_methods)]
+        # 3. 데이터 필터링
+    if selected_regions:
+        filtered_data = filtered_data[filtered_data['시/군/구'].isin(selected_regions)]
     
     figure = create_rate_graph_hi(filtered_data, selected_contractors, cutoff_date)
     
@@ -124,6 +163,7 @@ def update_graph(selected_date, selected_contractors, selected_methods):
     figure['layout']['yaxis'].update(autorange=True)
     
     return figure
+
 import plotly.graph_objs as go
 
 def create_rate_graph_hi(data, selected_contractors, cutoff_date):
@@ -149,7 +189,7 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
             y=contractor_data['낙찰률'], 
             mode='lines+markers', 
             name=contractor,
-            marker=dict(size=10, color='red', opacity=0.7)
+            marker=dict(color='red', opacity=0.3)
         )
         traces.append(trace)
     
@@ -192,7 +232,7 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
             spikecolor='black',
             spikesnap='cursor',
             spikethickness=1,
-            spikedash='dot',
+            spikedash='solid',
             tickmode='linear',  # 달 단위로 틱 간격을 조절
             tick0=data['날짜'].min(),  # 첫 틱의 위치를 데이터의 최소 날짜로 설정
             dtick="M1",  # 달 단위로 틱 간격 설정
@@ -204,7 +244,7 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
             spikecolor='black',
             spikesnap='cursor',
             spikethickness=1,
-            spikedash='dot',
+            spikedash='solid',
             dtick=0.1,  # y축의 틱 간격을 0.1로 설정
             fixedrange=False,
         )
@@ -214,4 +254,4 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
         'layout': layout
     }
 if __name__ == "__main__":
-    app.run_server(host='0.0.0.0', port=8050)
+    app.run_server(host='0.0.0.0', port=8050, debug=True)
