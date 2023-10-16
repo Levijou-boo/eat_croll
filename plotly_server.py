@@ -254,4 +254,4 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
         'layout': layout
     }
 if __name__ == "__main__":
-    app.run_server(host='0.0.0.0', port=8050, debug=True)
+    app.run_server(host='0.0.0.0', port=8050)
