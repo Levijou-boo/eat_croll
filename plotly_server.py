@@ -1,6 +1,5 @@
 import dash
-from dash import dcc
-from dash import html
+from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 import pandas as pd
@@ -11,7 +10,8 @@ from config import MONGO_URI
 import os
 import ast
 import json
-
+import dash_core_components as dcc
+import dash_html_components as html
 
 def extract_city(location_str):
     try:
@@ -85,6 +85,7 @@ bid_method_options = [{'label': method, 'value': method} for method in data_sort
 
 
 app.layout = html.Div([
+
     html.H1("시간에 따른 낙찰률"),
     dcc.Dropdown(
         id='date-dropdown',
@@ -110,17 +111,29 @@ app.layout = html.Div([
         placeholder="시/군/구 검색 및 선택",
         value=['김해시','거제시','통영시']
     ),
-    dcc.Graph(id='rate-graph')
+    dcc.Graph(id='rate-graph'),
+    html.Div(id='spike-line-value', style={
+        'position': 'fixed',
+        'bottom': '0',
+        'left': '0',
+        'width': '100%',
+        'background-color': '#f9f9f9',
+        'padding': '10px',
+        'border-top': '1px solid #ddd',
+        'text-align': 'center',
+    })
 ])
 
 @app.callback(
-    Output('rate-graph', 'figure'),
-    Input('date-dropdown', 'value'),
-    Input('contractor-dropdown', 'value'),
-    Input('bid-method-dropdown', 'value'),  
-    Input('region-dropdown', 'value')  
+    [Output('rate-graph', 'figure'),
+     Output('spike-line-value', 'children')],
+    [Input('date-dropdown', 'value'),
+     Input('contractor-dropdown', 'value'),
+     Input('bid-method-dropdown', 'value'),
+     Input('region-dropdown', 'value'),
+     Input('rate-graph', 'hoverData')]
 )
-def update_graph(selected_date, selected_contractors, selected_methods, selected_regions):
+def update_graph(selected_date, selected_contractors, selected_methods, selected_regions, hoverData):
     filtered_data = data_sorted
     
     # 년도 선택 시
@@ -161,8 +174,14 @@ def update_graph(selected_date, selected_contractors, selected_methods, selected
     
     # y축의 스케일을 자동으로 조정
     figure['layout']['yaxis'].update(autorange=True)
+    if hoverData and 'y' in hoverData['points'][0]:
+        y_value = hoverData['points'][0]['y']
+        hover_text = f"Spike Line Value: {y_value:.2f}%"
+    else:
+        hover_text = "Hover over the graph to see the spike line value!"
     
-    return figure
+    return figure, hover_text
+
 
 import plotly.graph_objs as go
 
@@ -176,11 +195,12 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
         x=data['날짜'], 
         y=data['낙찰률'], 
         mode='markers', 
-        text=data['발주처'],
+        text=[f"날짜: {date}<br>낙찰률: {rate:.2f}%<br>발주처: {contractor}" 
+          for date, rate, contractor in zip(data['날짜'], data['낙찰률'], data['발주처'])],
         marker=dict(color='green', opacity=0.3)
     )
     traces.append(trace_all)
-
+    
     # 선택된 발주처 데이터만 빨간색 라인 및 마커로 위에 그립니다.
     for contractor in selected_contractors:
         contractor_data = data[data['발주처'] == contractor]
@@ -189,7 +209,7 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
             y=contractor_data['낙찰률'], 
             mode='lines+markers', 
             name=contractor,
-            marker=dict(color='red', opacity=0.3)
+            marker=dict(color='red', opacity=0.3, size=9)
         )
         traces.append(trace)
     
@@ -197,14 +217,14 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
     most_common_rates = data['낙찰률'].value_counts().nlargest(50).index
     y_max = data['낙찰률'].max()  # 현재 데이터의 최대 낙찰률
     y_range_max = y_max + (0.1 * y_max)  # y축 범위의 최대값을 현재 최대 낙찰률보다 10% 더 크게 설정
-
+    
     for rate in most_common_rates:
         # 선 그리기
         line = go.Scatter(
             x=[cutoff_date, data['날짜'].max()],
             y=[rate, rate],
             mode='lines',
-            line=dict(width=0.1, color='blue'),
+            line=dict(width=0.1, color='purple'),
             showlegend=False
         )
         traces.append(line)
@@ -228,6 +248,7 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
         height=2000,
         autosize=True,
         xaxis=dict(
+            
             spikemode='across',
             spikecolor='black',
             spikesnap='cursor',
@@ -239,6 +260,7 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
             fixedrange=False 
         ),
         yaxis=dict(
+            zeroline=False,
             range=[0, y_range_max],  # y축 범위 설정
             spikemode='across',
             spikecolor='black',
@@ -254,4 +276,4 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
         'layout': layout
     }
 if __name__ == "__main__":
-    app.run_server(host='0.0.0.0', port=8050)
+    app.run_server(host='0.0.0.0', port=8050, debug=True)
