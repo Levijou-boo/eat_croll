@@ -221,17 +221,17 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
     for rate in most_common_rates:
         # 선 그리기
         line = go.Scatter(
-            x=[cutoff_date, data['날짜'].max()],
+            x=[cutoff_date, data['날짜'].max()+ timedelta(days=40)],
             y=[rate, rate],
             mode='lines',
-            line=dict(width=0.1, color='purple'),
+            line=dict(width=0.1, color='red'),
             showlegend=False
         )
         traces.append(line)
         
         # 텍스트 표시
         text = go.Scatter(
-            x=[data['날짜'].max() + timedelta(days=5)],  # 텍스트의 x 좌표를 선보다 약간 오른쪽으로 옮김
+            x=[data['날짜'].max() + timedelta(days=40)],  # 텍스트의 x 좌표를 선보다 약간 오른쪽으로 옮김
             y=[rate],  # 선의 y 좌표에 텍스트를 위치시킴
             mode='text',
             text=[f"{rate:.2f}%"],
@@ -271,6 +271,7 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
             fixedrange=False,
         )
     )
+    
     return {
         'data': traces,
         'layout': layout
