@@ -70,8 +70,6 @@ except Exception as e:
 app = dash.Dash(__name__)
 server = app.server 
 
-# 날짜 필터링 옵션
-# 날짜 필터링 옵션
 
 # 날짜별 및 년도별 옵션 생성
 start_year = data_sorted['날짜'].min().year
@@ -91,13 +89,13 @@ app.layout = html.Div([
         options=combined_options,
         value='1년'
     ),
-    dcc.Dropdown(
+    dcc.Dropdown( 
         id='contractor-dropdown',
         options=[{'label': contractor, 'value': contractor} for contractor in data_sorted['발주처'].unique()],
         multi=True,
         placeholder="발주처 검색 및 선택"
     ),
-    dcc.Dropdown(  # 새로 추가된 부분
+    dcc.Dropdown( # '낙찰 방식' 필터를 위한 드롭다운 추가
         id='bid-method-dropdown',
         options=bid_method_options,
         multi=True,
@@ -173,21 +171,20 @@ def update_graph(selected_date, selected_contractors, selected_methods, selected
     
     # y축의 스케일을 자동으로 조정
     figure['layout']['yaxis'].update(autorange=True)
+    hover_text = "Hover"
     if hoverData:
-        x_hovered = hoverData['points'][0]['x']
+        pass
+        # x_hovered = hoverData['points'][0]['x']
         
-        # 해당 x 위치에서의 모든 y 값들을 가져옵니다.
-        y_values_at_x_hovered = filtered_data[filtered_data['날짜'] == x_hovered]['rate'].tolist()
+        # # 해당 x 위치에서의 모든 y 값들을 가져옵니다.
+        # y_values_at_x_hovered = filtered_data[filtered_data['날짜'] == x_hovered]['rate'].tolist()
+        # y_value = y_values_at_x_hovered[0]
 
-        # y_values_at_x_hovered 리스트에서 필요한 값을 선택하거나 원하는 연산을 수행하세요.
-        # 예를 들어, 여기에서는 리스트의 첫 번째 값을 사용합니다.
-        y_value = y_values_at_x_hovered[0]
-
-        figure['layout']['yaxis']['tickvals'] = [y_value]
-        figure['layout']['yaxis']['ticktext'] = [f"{y_value:.2f}%"]
-        figure['layout']['yaxis']['showticklabels'] = True
-        figure['layout']['yaxis']['side'] = 'right'  # 오른쪽에 틱 표시
-        hover_text = f"Spike Line Value: {y_value:.2f}%"
+        # figure['layout']['yaxis']['tickvals'] = [y_value]
+        # figure['layout']['yaxis']['ticktext'] = [f"{y_value:.2f}%"]
+        # figure['layout']['yaxis']['showticklabels'] = True
+        # figure['layout']['yaxis']['side'] = 'right'  # 오른쪽에 틱 표시
+        # hover_text = f"Spike Line Value: {y_value:.2f}%"
     else:
         hover_text = "Hover over the graph to see the spike line value!"
     return figure, hover_text
@@ -264,8 +261,8 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
     # 그래프 레이아웃 설정 부분에서 y축 범위를 조절
     layout = go.Layout(
         title="시간에 따른 낙찰률", 
-        width=3000, 
-        height=2000,
+        width=4000, 
+        height=3000,
         autosize=True,
         xaxis=dict(
             spikemode='across',
