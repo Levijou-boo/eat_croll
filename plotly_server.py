@@ -27,22 +27,28 @@ def extract_city(location_str):
     except Exception as e:
         
         return "Unknown"
-# MongoDB 연결
-print('Trying to connect to MongoDB...')
-try:
-    client = MongoClient("mongodb+srv://mafumafu9854:3eWoSwhmDvhlim9L@cluster0.nxdfqvk.mongodb.net/?retryWrites=true&w=majority")
-    client.admin.command('ping')
-    print("Successfully connected to MongoDB!")
-    db = client['eat_croll']
-    collection = db['eat_croll_data']
-    documents = list(collection.find({}))
-    data = pd.DataFrame(documents)
+    
+def data_sorting(data):
+    data['날짜'] = pd.to_datetime(data['날짜'])
     data_sorted = data.sort_values(by='날짜')
     data_sorted['낙찰률'] = data_sorted['낙찰예정가격'] * data_sorted['낙찰방식'] / (data_sorted['기초가격'] + 0.0001)
     data_sorted = data_sorted[data_sorted['낙찰률'] < 1000]
     data_sorted = data_sorted[data_sorted['날짜'] >= '2000-01-01']
     data_sorted['발주처_id'] = data_sorted['발주처'].astype('category').cat.codes
     data_sorted['시/군/구'] = data_sorted['지역'].apply(extract_city)
+    return data_sorted
+
+# MongoDB 연결
+print('Trying to connect to MongoDB...')
+try:
+    client = MongoClient(MONGO_URI)
+    client.admin.command('ping')
+    print("Successfully connected to MongoDB!")
+    db = client['eat_croll']
+    collection = db['eat_croll_data']
+    documents = list(collection.find({}))
+    data = pd.DataFrame(documents)
+    data_sorted = data_sorting(data)
     print(data_sorted['시/군/구'].unique())
     # '지역' 컬럼에서 '시/군/구' 값을 추출하여 '시/군/구' 컬럼을 생성
     # '시/군/구' 값이 "Unknown"인 행의 '지역' 컬럼 값을 출력
@@ -54,14 +60,7 @@ except Exception as e:
     # MongoDB 연결 실패 시 로컬 CSV 파일 사용
     if os.path.exists('eat_croll_data.csv'):
         data = pd.read_csv('eat_croll_data.csv')
-        data['날짜'] = pd.to_datetime(data['날짜'])
-        data_sorted = data.sort_values(by='날짜')
-        data_sorted['낙찰률'] = data_sorted['낙찰예정가격'] * data_sorted['낙찰방식'] / (data_sorted['기초가격'] + 0.0001)
-        data_sorted = data_sorted[data_sorted['낙찰률'] < 1000]
-        data_sorted = data_sorted[data_sorted['날짜'] >= '2000-01-01']
-        data_sorted['발주처_id'] = data_sorted['발주처'].astype('category').cat.codes
-        data_sorted['시/군/구'] = data_sorted['지역'].apply(extract_city)
-
+        data_sorted = data_sorting(data)
     else:
         print("eat_croll_data.csv not found!")
         
@@ -174,16 +173,34 @@ def update_graph(selected_date, selected_contractors, selected_methods, selected
     
     # y축의 스케일을 자동으로 조정
     figure['layout']['yaxis'].update(autorange=True)
-    if hoverData and 'y' in hoverData['points'][0]:
-        y_value = hoverData['points'][0]['y']
+    if hoverData:
+        x_hovered = hoverData['points'][0]['x']
+        
+        # 해당 x 위치에서의 모든 y 값들을 가져옵니다.
+        y_values_at_x_hovered = filtered_data[filtered_data['날짜'] == x_hovered]['rate'].tolist()
+
+        # y_values_at_x_hovered 리스트에서 필요한 값을 선택하거나 원하는 연산을 수행하세요.
+        # 예를 들어, 여기에서는 리스트의 첫 번째 값을 사용합니다.
+        y_value = y_values_at_x_hovered[0]
+
+        figure['layout']['yaxis']['tickvals'] = [y_value]
+        figure['layout']['yaxis']['ticktext'] = [f"{y_value:.2f}%"]
+        figure['layout']['yaxis']['showticklabels'] = True
+        figure['layout']['yaxis']['side'] = 'right'  # 오른쪽에 틱 표시
         hover_text = f"Spike Line Value: {y_value:.2f}%"
     else:
         hover_text = "Hover over the graph to see the spike line value!"
-    
     return figure, hover_text
 
 
 import plotly.graph_objs as go
+# 불투명도 계산 함수 정의
+def calculate_opacity(index, total_count, max_opacity=0.3, min_opacity=0.1):
+    if total_count <= 1:
+        return max_opacity
+    opacity = max_opacity - (index / (total_count - 1)) * (max_opacity - min_opacity)
+    return opacity
+
 
 def create_rate_graph_hi(data, selected_contractors, cutoff_date):
     traces = []
@@ -202,14 +219,17 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
     traces.append(trace_all)
     
     # 선택된 발주처 데이터만 빨간색 라인 및 마커로 위에 그립니다.
-    for contractor in selected_contractors:
+        # 불투명도 계산
+    
+    for index,contractor in enumerate(selected_contractors):
+        opacity = calculate_opacity(index, len(selected_contractors))
         contractor_data = data[data['발주처'] == contractor]
         trace = go.Scattergl(
             x=contractor_data['날짜'], 
             y=contractor_data['낙찰률'], 
             mode='lines+markers', 
             name=contractor,
-            marker=dict(color='red', opacity=0.3, size=9)
+            marker=dict(color='red', opacity=opacity, size=9)
         )
         traces.append(trace)
     
@@ -248,7 +268,6 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
         height=2000,
         autosize=True,
         xaxis=dict(
-            
             spikemode='across',
             spikecolor='black',
             spikesnap='cursor',
