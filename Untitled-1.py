@@ -236,7 +236,7 @@ class document_is_complete(object):
 class CustomFirefoxDriver():
     def __init__(self, url):
         self.url = url
-        self.profile_path = r'C:\Users\kano\AppData\Roaming\Mozilla\Firefox\Profiles\s8543x41.default-release'
+        # self.profile_path = r'C:\Users\kano\AppData\Roaming\Mozilla\Firefox\Profiles\s8543x41.default-release'
         self.options = self.configure_options()
         self.service = Service('./geckodriver.exe')
         self.driver = self.configure_driver()
@@ -246,7 +246,7 @@ class CustomFirefoxDriver():
     # 프로필 경로, 팝업창 끄기
     def configure_options(self):
         options = Options()
-        options.set_preference('profile', self.profile_path)
+        # options.set_preference('profile', self.profile_path)
         options.set_preference("dom.popup_maximum", 0)
         return options
 
@@ -570,16 +570,3 @@ for year in start_end_years:
                              year[0], year[1], noticetitle)
 
 
-# %%
-
-
-# %%
-next_button_css = "#mainframe\\.VFS_MAIN\\.HFS_MAIN\\.VFS_WORK\\.FS_WORK\\.win8060300\\.form\\.div_work\\.form\\.div_page01\\.form\\.div_pagingNo\\.form\\.btn_next"
-element = WebDriverWait(driver_instance, 10).until(
-    EC.presence_of_element_located(
-        (By.CSS_SELECTOR, '#mainframe\\.VFS_MAIN\\.HFS_MAIN\\.VFS_WORK\\.FS_WORK\\.win8060300\\.form\\.div_work\\.form\\.div_page01\\.form\\.div_pagingNo\\.form\\.btn_next'))
-)
-next_button = driver_instance.find_element(By.CSS_SELECTOR, next_button_css)
-status = next_button.get_attribute('status')
-if status == 'disabled':
-    print('display disabled')

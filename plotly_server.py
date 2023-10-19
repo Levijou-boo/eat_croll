@@ -261,8 +261,8 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
     # 그래프 레이아웃 설정 부분에서 y축 범위를 조절
     layout = go.Layout(
         title="시간에 따른 낙찰률", 
-        width=4000, 
-        height=3000,
+        width=3500, 
+        height=2000,
         autosize=True,
         xaxis=dict(
             spikemode='across',
