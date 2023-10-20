@@ -242,10 +242,12 @@ class CustomFirefoxDriver():
         self.driver = self.configure_driver()
         self.run_driver()
 
-    # firefox driver 옵션 설정 반환
-    # 프로필 경로, 팝업창 끄기
+    def quit(self):
+        self.driver.quit()
+        
     def configure_options(self):
         options = Options()
+        options.add_argument('--headless')
         # options.set_preference('profile', self.profile_path)
         options.set_preference("dom.popup_maximum", 0)
         return options
@@ -257,7 +259,7 @@ class CustomFirefoxDriver():
     # 드라이버 실행
     def run_driver(self):
         self.driver.get(self.url)
-        self.driver.maximize_window()
+        self.driver.set_window_size(6144, 3456)
         import pyautogui
         time.sleep(5)
         self.driver.switch_to.window(self.driver.current_window_handle)
@@ -558,15 +560,27 @@ def process_detail_pages(driver_instance, firefox, start_year, end_year, noticet
 
 
 # %%
-start_end_years = get_month_start_end_dates_with_calendar(2023, start_month=10)
-notice_title_list = ['육류', '축산', '육가금류', '육,가금류']
-# a, b = '2021-01-01', '2021-01-02'
-for year in start_end_years:
-    for noticetitle in notice_title_list:
-        print(year, noticetitle)
-        time.sleep(2)
-        move_targe_page(firefox, year[0], year[1], noticetitle)
-        process_detail_pages(driver_instance, firefox,
-                             year[0], year[1], noticetitle)
+def job():
+    current_year = datetime.now().year
+    current_month = datetime.now().month
+    start_end_years = get_month_start_end_dates_with_calendar(current_year, start_month=current_month)
+    notice_title_list = ['육류', '축산', '육가금류', '육,가금류']
+    for year in start_end_years:
+        for noticetitle in notice_title_list:
+            print(year, noticetitle)
+            time.sleep(2)
+            move_targe_page(firefox, year[0], year[1], noticetitle)
+            process_detail_pages(driver_instance, firefox, year[0], year[1], noticetitle)
+    firefox.quit()
+            
+import schedule
+schedule.every().day.at("09:00").do(job)  # 오전 9시에 실행
+schedule.every().day.at("14:00").do(job)  # 오후 2시에 실행
+schedule.every().day.at("17:00").do(job)  # 오후 5시에 실행
+schedule.every().day.at("19:00").do(job)  # 오후 7시에 실행
 
-
+if __name__ == '__main__':  
+    job()
+    while True:
+        schedule.run_pending()
+        time.sleep(1)

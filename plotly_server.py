@@ -38,6 +38,39 @@ def data_sorting(data):
     data_sorted['시/군/구'] = data_sorted['지역'].apply(extract_city)
     return data_sorted
 
+
+def data_reload():
+    print('data_reload called')
+    global data_sorted, start_year, end_year, date_options, combined_options, bid_method_options, unknown_values
+    try:
+        
+        client = MongoClient(MONGO_URI)
+        
+        client.admin.command('ping')
+        
+        db = client['eat_croll']
+        collection = db['eat_croll_data']
+        
+        documents = list(collection.find({}))
+        data = pd.DataFrame(documents)
+        data_sorted = data_sorting(data)
+        unknown_values = data_sorted[data_sorted['시/군/구'] == "Unknown"]['지역']
+        
+    except Exception as e:
+        if os.path.exists('eat_croll_data.csv'):
+            data = pd.read_csv('eat_croll_data.csv')
+            data_sorted = data_sorting(data)
+        else:
+            print("eat_croll_data.csv not found!")
+    start_year = data_sorted['날짜'].min().year
+    end_year = data_sorted['날짜'].max().year
+    year_options = [{'label': str(year), 'value': str(year)} for year in range(start_year, end_year + 1)]
+    date_options = ['1개월', '3개월', '6개월', '1년', '3년', '5년']
+    combined_options = year_options + [{'label': option, 'value': option} for option in date_options]
+    bid_method_options = [{'label': method, 'value': method} for method in data_sorted['낙찰방식'].unique()]
+    print('data_reloding endpoint')    
+
+        
 # MongoDB 연결
 print('Trying to connect to MongoDB...')
 try:
@@ -64,9 +97,6 @@ except Exception as e:
     else:
         print("eat_croll_data.csv not found!")
         
-
-
-
 app = dash.Dash(__name__)
 server = app.server 
 
@@ -76,14 +106,16 @@ start_year = data_sorted['날짜'].min().year
 end_year = data_sorted['날짜'].max().year
 year_options = [{'label': str(year), 'value': str(year)} for year in range(start_year, end_year + 1)]
 date_options = ['1개월', '3개월', '6개월', '1년', '3년', '5년']
-
 combined_options = year_options + [{'label': option, 'value': option} for option in date_options]
 bid_method_options = [{'label': method, 'value': method} for method in data_sorted['낙찰방식'].unique()]
 
-
 app.layout = html.Div([
-
     html.H1("시간에 따른 낙찰률"),
+        dcc.Interval(
+        id='interval-component',
+        interval=30*60*1000,  # 1분마다
+        n_intervals=0
+    ),
     dcc.Dropdown(
         id='date-dropdown',
         options=combined_options,
@@ -128,11 +160,20 @@ app.layout = html.Div([
      Input('contractor-dropdown', 'value'),
      Input('bid-method-dropdown', 'value'),
      Input('region-dropdown', 'value'),
-     Input('rate-graph', 'hoverData')]
+     Input('rate-graph', 'hoverData'),
+     Input('interval-component', 'n_intervals')]
 )
-def update_graph(selected_date, selected_contractors, selected_methods, selected_regions, hoverData):
+def update_graph(selected_date, selected_contractors, selected_methods, selected_regions, hoverData, n_intervals):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        trigger_id = 'No input yet'
+    else:
+        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # n_intervals 입력이 콜백을 트리거했는지 확인
+    if trigger_id == 'interval-component':
+        data_reload()
     filtered_data = data_sorted
-    
     # 년도 선택 시
     if selected_date.isdigit():
         start_date = datetime(int(selected_date), 1, 1)
@@ -261,7 +302,7 @@ def create_rate_graph_hi(data, selected_contractors, cutoff_date):
     # 그래프 레이아웃 설정 부분에서 y축 범위를 조절
     layout = go.Layout(
         title="시간에 따른 낙찰률", 
-        width=3700, 
+        width=3500, 
         height=2000,
         autosize=True,
         xaxis=dict(
