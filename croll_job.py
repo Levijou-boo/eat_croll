@@ -573,14 +573,14 @@ def job():
             process_detail_pages(driver_instance, firefox, year[0], year[1], noticetitle)
     firefox.quit()
             
-import schedule
-schedule.every().day.at("09:00").do(job)  # 오전 9시에 실행
-schedule.every().day.at("14:00").do(job)  # 오후 2시에 실행
-schedule.every().day.at("17:00").do(job)  # 오후 5시에 실행
-schedule.every().day.at("19:00").do(job)  # 오후 7시에 실행
+# import schedule
+# schedule.every().day.at("09:00").do(job)  # 오전 9시에 실행
+# schedule.every().day.at("14:00").do(job)  # 오후 2시에 실행
+# schedule.every().day.at("17:00").do(job)  # 오후 5시에 실행
+# schedule.every().day.at("19:00").do(job)  # 오후 7시에 실행
 
 if __name__ == '__main__':  
     job()
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    # while True:
+        # schedule.run_pending()
+        # time.sleep(1)
