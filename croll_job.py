@@ -581,6 +581,7 @@ def job():
 
 if __name__ == '__main__':  
     job()
+    input("Press enter to exit...")
     # while True:
         # schedule.run_pending()
         # time.sleep(1)
